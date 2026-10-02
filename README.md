@@ -185,3 +185,7 @@ void updateOutputs() {
 | **Button Hold (Mid)**| Mid (~50%) | Held Down (ON) | ~2048 | 128 | 128 | Status LED ON, PWM LED at 50% brightness | Status LED ON, PWM LED at medium brightness | Pass |
 | **Button Hold (Max)**| High (Max) | Held Down (ON) | ~4095 | 255 | 255 | Status LED ON, PWM LED at 100% full brightness | Status LED ON, PWM LED at full brightness | Pass |
 | **Button Release** | High (Max) | Released (OFF) | ~4095 | 255 | 0 | Both LEDs turn OFF immediately | Both LEDs turned OFF immediately | Pass |
+
+
+https://github.com/user-attachments/assets/c2f789f6-6850-4f62-ab5f-cfa7fc5856e7
+
