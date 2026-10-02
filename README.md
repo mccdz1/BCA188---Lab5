@@ -65,13 +65,11 @@ Since the lab uses an **ESP32-S3** (which does not have GPIO 34 from the classic
 ```cpp
 #include <Arduino.h>
 
-// Pin assignments for ESP32-S3
-const uint8_t BUTTON_PIN     = 5;   // Push button (active LOW)
-const uint8_t POT_PIN        = 4;   // Potentiometer wiper (ADC1)
-const uint8_t STATUS_LED_PIN = 6;   // Status indicator LED
-const uint8_t PWM_LED_PIN    = 7;   // PWM Brightness LED
+const uint8_t BUTTON_PIN = 5;
+const uint8_t POT_PIN = 4;
+const uint8_t STATUS_LED_PIN = 6;
+const uint8_t PWM_LED_PIN = 7;
 
-// State variables
 bool buttonPressed = false;
 bool pwmReady      = false;
 
@@ -79,15 +77,13 @@ int rawInput      = 0;
 int requestedDuty = 0;
 int appliedDuty   = 0;
 
-unsigned long lastPrint = 0;
+unsigned long lastPrintTime = 0;
 
-// Function prototypes
 void readInputs();
 void processInputs();
 void updateOutputs();
 int scaleToDuty(int raw);
 
-// Dedicated scaling function (Task 3)
 int scaleToDuty(int raw) {
   return constrain(map(raw, 0, 4095, 0, 255), 0, 255);
 }
@@ -95,7 +91,6 @@ int scaleToDuty(int raw) {
 void setup() {
   Serial.begin(115200);
 
-  // Configure button with internal pull-up
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
   // Configure Status LED
@@ -106,15 +101,13 @@ void setup() {
   pinMode(PWM_LED_PIN, OUTPUT);
   digitalWrite(PWM_LED_PIN, LOW);
 
-  // Set ADC resolution to 12 bits (0 - 4095)
   analogReadResolution(12);
 
-  // Initialize LEDC PWM on ESP32-S3 (5000 Hz, 8-bit resolution: 0 - 255)
   pwmReady = ledcAttach(PWM_LED_PIN, 5000, 8);
   if (pwmReady) {
     ledcWrite(PWM_LED_PIN, 0);
   } else {
-    Serial.println("PWM setup failed!");
+    Serial.println("PWM setup failed.");
   }
 }
 
@@ -123,33 +116,31 @@ void loop() {
   processInputs();
   updateOutputs();
 
-  // Print values to Serial Monitor every 100ms
-  if (millis() - lastPrint >= 100) {
-    lastPrint = millis();
+  if (millis() - lastPrintTime >= 100) {
+    lastPrintTime = millis();
+    
     Serial.print("Button: ");
-    Serial.print(buttonPressed ? "HELD " : "UP   ");
-    Serial.print(" | Raw ADC: ");
+    Serial.print(buttonPressed ? "ON  " : "OFF   ");
+    Serial.print(" | Raw: ");
     Serial.print(rawInput);
-    Serial.print(" | Requested Duty: ");
-    Serial.print(requestedDuty);
-    Serial.print(" | Applied Duty: ");
-    Serial.println(appliedDuty);
+    Serial.print("\t| Actual Duty: ");
+    Serial.print(appliedDuty);
+    Serial.print("\t| Duty %: ");
+    Serial.print((appliedDuty / 255.0) * 100.0, 1);
+    Serial.println("%");
   }
 
   delay(10);
 }
 
-// 1. Read Inputs
 void readInputs() {
   buttonPressed = (digitalRead(BUTTON_PIN) == LOW);
   rawInput = analogRead(POT_PIN);
 }
 
-// 2. Process Inputs
 void processInputs() {
   requestedDuty = scaleToDuty(rawInput);
 
-  // Only apply brightness when button is held down
   if (buttonPressed && pwmReady) {
     appliedDuty = requestedDuty;
   } else {
@@ -157,12 +148,9 @@ void processInputs() {
   }
 }
 
-// 3. Write Outputs
 void updateOutputs() {
-  // Status LED turns ON only while button is held
   digitalWrite(STATUS_LED_PIN, (buttonPressed && pwmReady) ? HIGH : LOW);
 
-  // Write duty cycle to PWM LED
   if (pwmReady) {
     ledcWrite(PWM_LED_PIN, appliedDuty);
   }
@@ -176,7 +164,7 @@ void updateOutputs() {
 1. **Reset with button released:**  
    When the board is reset and the button is unpressed, both the Status LED and the PWM LED remain completely OFF.
 2. **Rotating knob while button is released:**  
-   Turning the potentiometer knob from low to high while released updates `rawInput` and `requestedDuty` on the serial monitor, but `appliedDuty` stays at `0`. The LED does not light up.
+   Turning the potentiometer knob from low to high while released updates `rawInput` and `requestedDuty`, but `appliedDuty` stays at `0`. The LED does not light up.
 3. **Holding the button:**  
    When the button is pressed and held, the Status LED turns ON immediately, and the PWM LED lights up based on the current position of the potentiometer.
 4. **Rotating knob while held:**  
@@ -188,12 +176,12 @@ void updateOutputs() {
 
 ## 5. Expected vs. Observed Behavior Table
 
-| Test Condition | Knob Position | Button State | Raw ADC (`rawInput`) | Scaled Duty (`requestedDuty`) | Applied Duty (`appliedDuty`) | Expected Behavior | Observed Behavior | Status |
+| Test Condition | Knob Position | Button State | Raw ADC (`rawInput`) | Scaled Duty (`requestedDuty`) | Actual Duty (`appliedDuty`) | Expected Behavior | Observed Behavior | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **System Idle** | Low (Min) | Released | ~0 | 0 | 0 | Both LEDs OFF | Both LEDs stayed OFF | Pass |
-| **Knob turn (idle)** | Mid (~50%) | Released | ~2048 | 128 | 0 | Both LEDs OFF; no light | Both LEDs stayed OFF | Pass |
-| **Knob turn (idle)** | High (Max) | Released | ~4095 | 255 | 0 | Both LEDs OFF; no light | Both LEDs stayed OFF | Pass |
-| **Button Hold (Min)**| Low (Min) | Held Down | ~0 | 0 | 0 | Status LED ON, PWM LED OFF | Status LED ON, PWM LED OFF | Pass |
-| **Button Hold (Mid)**| Mid (~50%) | Held Down | ~2048 | 128 | 128 | Status LED ON, PWM LED at 50% brightness | Status LED ON, PWM LED at medium brightness | Pass |
-| **Button Hold (Max)**| High (Max) | Held Down | ~4095 | 255 | 255 | Status LED ON, PWM LED at 100% full brightness | Status LED ON, PWM LED at full brightness | Pass |
-| **Button Release** | High (Max) | Released | ~4095 | 255 | 0 | Both LEDs turn OFF immediately | Both LEDs turned OFF immediately | Pass |
+| **System Idle** | Low (Min) | Released (OFF) | ~0 | 0 | 0 | Both LEDs OFF | Both LEDs stayed OFF | Pass |
+| **Knob turn (idle)** | Mid (~50%) | Released (OFF) | ~2048 | 128 | 0 | Both LEDs OFF; no light | Both LEDs stayed OFF | Pass |
+| **Knob turn (idle)** | High (Max) | Released (OFF) | ~4095 | 255 | 0 | Both LEDs OFF; no light | Both LEDs stayed OFF | Pass |
+| **Button Hold (Min)**| Low (Min) | Held Down (ON) | ~0 | 0 | 0 | Status LED ON, PWM LED OFF | Status LED ON, PWM LED OFF | Pass |
+| **Button Hold (Mid)**| Mid (~50%) | Held Down (ON) | ~2048 | 128 | 128 | Status LED ON, PWM LED at 50% brightness | Status LED ON, PWM LED at medium brightness | Pass |
+| **Button Hold (Max)**| High (Max) | Held Down (ON) | ~4095 | 255 | 255 | Status LED ON, PWM LED at 100% full brightness | Status LED ON, PWM LED at full brightness | Pass |
+| **Button Release** | High (Max) | Released (OFF) | ~4095 | 255 | 0 | Both LEDs turn OFF immediately | Both LEDs turned OFF immediately | Pass |
