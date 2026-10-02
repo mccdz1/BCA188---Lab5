@@ -1,4 +1,4 @@
-# BCA188 - Lab 5: Structured Firmware & Device I/O
+# BCA188 - Lab 5: Structured Workstation Light
 
 **Course:** BCA188 - IoT Firmware Programming and Device I/O  
 **Board Used:** ESP32-S3  
